@@ -1,0 +1,147 @@
+{% extends "base_shop.html" %}
+{% block title %}{{ request.user.first_name|default:request.user.username }} · Seller overview{% endblock %}
+{% block content %}
+    <div class="container-fluid dashboard-wrap px-3 px-lg-5">
+        <div class="dashboard-head">
+            <div>
+                <div class="eyebrow">Seller overview</div>
+                <h1 class="mb-0">Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+                <p>Here’s what’s happening with your shop today.</p>
+            </div>
+            <div class="dashboard-actions">
+                <a class="btn btn-outline-secondary px-3" href="{% url 'shop:orders' %}">View orders</a>
+                <a class="btn btn-primary px-3"
+                   href="{% url 'shop:inventory' %}">Manage products <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+        <section class="stat-grid" aria-label="Shop performance">
+            <article class="stat-card">
+                <span class="stat-icon">₹</span>
+                <div class="stat-label">Sales value</div>
+                <div class="stat-value">₹{{ sales_total|floatformat:2 }}</div>
+                <div class="stat-note">Across your fulfilled and active items</div>
+            </article>
+            <article class="stat-card">
+                <span class="stat-icon">↗</span>
+                <div class="stat-label">Orders</div>
+                <div class="stat-value">{{ order_count }}</div>
+                <div class="stat-note">Orders containing your products</div>
+            </article>
+            <article class="stat-card">
+                <span class="stat-icon">▦</span>
+                <div class="stat-label">Products</div>
+                <div class="stat-value">{{ product_count }}</div>
+                <div class="stat-note">Live in your inventory</div>
+            </article>
+            <article class="stat-card">
+                <span class="stat-icon">!</span>
+                <div class="stat-label">Needs attention</div>
+                <div class="stat-value">{{ pending_count|add:low_stock_count }}</div>
+                <div class="stat-note">{{ pending_count }} pending items · {{ low_stock_count }} low stock</div>
+            </article>
+            <article class="stat-card">
+                <span class="stat-icon">◎</span>
+                <div class="stat-label">Average order value</div>
+                <div class="stat-value">₹{{ average_order_value|floatformat:2 }}</div>
+                <div class="stat-note">Per order containing your products</div>
+            </article>
+        </section>
+        <section class="dashboard-panels mb-4">
+            <div class="panel sales-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Sales overview</h2>
+                        <span class="small text-secondary">Monthly sales value · last six months</span>
+                    </div>
+                    <span class="chart-legend"><i></i> Sales</span>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="salesChart" aria-label="Monthly sales chart" role="img"></canvas>
+                </div>
+            </div>
+            <div class="panel top-products-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Top products</h2>
+                        <span class="small text-secondary">By sales value</span>
+                    </div>
+                    <a href="{% url 'shop:inventory' %}">Inventory →</a>
+                </div>
+                <div class="top-product-list">{% for product in top_products %}<div class="top-product-row"><span class="rank">{{ forloop.counter|stringformat:"02d" }}</span>
+                    <div class="top-product-name">
+                        <strong>{{ product.product_name }}</strong><small>{{ product.units }}
+                        sold</small>
+                    </div>
+                    <strong>₹{{ product.amount|floatformat:0 }}</strong>
+                    </div>{% empty %}<div class="empty-state py-4"><strong>Nothing to rank yet</strong>Your best sellers
+                will show here.</div>{% endfor %}</div>
+        </div>
+    </section>
+    <section class="panel mb-4">
+        <div class="panel-heading">
+            <div>
+                <h2>Recent order activity</h2>
+                <span class="small text-secondary">Latest items purchased from your shop</span>
+            </div>
+            <a href="{% url 'shop:orders' %}">All orders <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="table-responsive recent-activity-table">
+            <table class="table dashboard-table align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Order</th>
+                        <th>Product</th>
+                        <th>Date</th>
+                        <th>Qty</th>
+                        <th>Amount</th>
+                        <th class="pe-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_orders %}
+                        <tr>
+                            <td class="ps-4 fw-bold">{{ item.order.formatted_order_id }}</td>
+                            <td>
+                                <span class="fw-semibold">{{ item.product_name }}</span>
+                                <div class="small text-secondary">{{ item.order.full_name }}</div>
+                            </td>
+                            <td>{{ item.order.created_at|date:"M j, Y" }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td class="fw-bold">₹{{ item.price|floatformat:2 }}</td>
+                            <td class="pe-4">
+                                <span class="status-pill">{{ item.status }}</span>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    <strong>Your shop is ready for its first order</strong>Add a few
+                                    products to help customers discover your store.<div class="mt-3"><a class="btn btn-primary btn-sm px-3"
+                                                                                                        href="{% url 'shop:inventory' %}">Add a
+                                    product</a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+{% block script %}
+    {{ monthly_sales|json_script:"monthly-sales-data" }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    const salesRows = JSON.parse(document.getElementById('monthly-sales-data').textContent);
+    const salesCanvas = document.getElementById('salesChart');
+
+    if (salesCanvas) new Chart(salesCanvas, {
+        type: 'line',
+        data: { labels: salesRows.map(row => row.label), datasets: [{ data: salesRows.map(row => row.value), borderColor: '#dc762d', backgroundColor: 'rgba(220,118,45,.12)', fill: true, tension: .38, borderWidth: 3, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: '#fff', pointBorderWidth: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => ' ₹' + context.parsed.y.toLocaleString('en-IN', { maximumFractionDigits: 2 }) } } }, scales: { x: { grid: { display: false }, border: { display: false } }, y: { beginAtZero: true, border: { display: false }, grid: { color: '#edf0eb' }, ticks: { callback: value => '₹' + Number(value).toLocaleString('en-IN') } } } }
+    });
+    </script>
+{% endblock %}

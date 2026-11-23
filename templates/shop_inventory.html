@@ -1,0 +1,468 @@
+{% extends "base_shop.html" %}
+{% block title %}{{ request.user.username }} - Products{% endblock %}
+{% block style %}
+    <style>
+    /* Add Button */
+    .btn-fab {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 950;
+        width: 60px;
+        height: 60px;
+        border-radius: 50% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        padding: 0;
+        padding-bottom: 4px;
+        background-color: #804d00 !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Blurred Background */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+        /* for modal scrolling */
+        overflow-y: auto;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .modal-box {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 2);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-box h2 {
+        margin-top: 0;
+        padding-top: 0;
+    }
+
+    .modal-box::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .modal-box::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.03);
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .modal-box::-webkit-scrollbar-thumb {
+        background-color: #bbb;
+        background-clip: padding-box;
+        border-radius: 10px;
+        border: 3px solid transparent;
+    }
+
+    .modal-box::-webkit-scrollbar-thumb:hover {
+        background-color: #888;
+    }
+
+    /* prevents main page from scrolling */
+    .no-scroll {
+        overflow: hidden;
+        height: 100vh;
+    }
+
+    .product-card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+
+    .product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .product-card img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .product-card button {
+        margin-left: auto;
+    }
+
+    .action-btn {
+        margin-top: 10px;
+        margin-right: 10px;
+        padding: 8px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: none;
+    }
+
+    .delete-btn {
+        background: #ff4d4d;
+        color: white;
+    }
+
+    .edit-btn {
+        background: #4caf50;
+        color: white;
+    }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="container-fluid dashboard-wrap px-3 px-lg-5 inventory-wrap">
+        <div class="dashboard-head">
+            <div>
+                <div class="eyebrow">Catalog</div>
+                <h1 class="mb-0">Your products</h1>
+                <p>Manage listings, pricing and stock for your shop.</p>
+            </div>
+            <button id="openAddModalButton" class="btn btn-primary px-4">＋ Add product</button>
+        </div>
+        <div class="inventory-summary">
+            <span><strong>{{ products|length }}</strong> products in your
+                catalog</span><span>Click a product to view or edit its details</span>
+        </div>
+        <!-- Product catalog -->
+        <div class="product-container">
+            {% for product in products %}
+                <div class="product-card inventory-card"
+                     data-id="{{ product.id }}"
+                     data-name="{{ product.name }}"
+                     data-price="{{ product.price }}"
+                     data-category="{{ product.category }}"
+                     data-stock="{{ product.stock }}"
+                     data-description="{{ product.description }}"
+                     data-image="{% if product.image %}{{ product.image.url }}{% endif %}">
+                    <div class="inventory-image">{% if product.image %}<img src="{{ product.image.url }}"
+                                                                            alt="{{ product.name }}">{% else %}<span>SB</span>{% endif %}</div>
+                    <div class="inventory-info">
+                        <div class="inventory-card-top">
+                            <h3>{{ product.name }}</h3>{% if product.stock <= 5 %}<span class="inventory-stock low">Low
+                                stock</span>{% else %}<span class="inventory-stock">In stock</span>{% endif %}
+                    </div>
+                    {% if product.category %}<span class="badge inventory-category">{{ product.category }}</span>{% else
+                        %}<span class="badge inventory-category">Uncategorised</span>{% endif %}
+                    <div class="inventory-meta">
+                        <span>Price <strong>₹{{ product.price }}</strong></span><span>Available
+                            <strong>{{ product.stock }} units</strong></span>
+                    </div>
+                </div>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary inventory-edit">Edit details <span aria-hidden="true">↗</span></button>
+            </div>
+        {% empty %}
+            <div class="panel inventory-empty">
+                <div class="empty-state">
+                    <strong>Your catalog is waiting for its first product</strong>Add a listing to
+                    start reaching customers.
+                    <div class="mt-3">
+                        <button type="button"
+                                class="btn btn-primary"
+                                onclick="document.getElementById('openAddModalButton').click()">Add your first product</button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<!-- Modal for Adding product -->
+<div id="addModalOverlay" class="modal-overlay">
+    <div class="modal-box">{% include "shop_addproduct.html" %}</div>
+</div>
+<!-- Modal for Viewing, Editing and Deleting -->
+<div id="detailModalOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <!-- Read mode -->
+        <div id="modalReadMode">
+            <h2 id="detailName">Product Details</h2>
+            <div id="detailImageContainer"></div>
+            <span id="detailCategory" class="badge bg-secondary mb-2"></span>
+            <p><strong>Price:</strong> ₹<span id="detailPrice"></span></p>
+            <p><strong>Stock:</strong> <span id="detailStock"></span> units</p>
+            <p id="detailDescription" style="color: #666;"></p>
+            <hr>
+            <div class="modal-action-btns">
+                <button id="editProductButton" class="action-btn edit-btn">Edit Product</button>
+                <button id="deleteProductButton" class="action-btn delete-btn">Delete Product</button>
+                <button class="action-btn close-detail-btn"
+                        style="background: #ccc;
+                               border: none">Close</button>
+            </div>
+        </div>
+        <!-- Edit Mode -->
+        <div id="modalEditMode">
+            <h2>Edit Product</h2>
+            <form action=""
+                  method="post"
+                  id="editProductForm"
+                  enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <hr>
+                <button type="submit" class="action-btn edit-btn">Save</button>
+                <button type="button"
+                        id="cancelEditButton"
+                        class="action-btn"
+                        style="background: #ccc">Cancel</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+    <script>
+    // Modal 1 elements(Add Product)
+    let addModal = document.getElementById('addModalOverlay');
+    let openAddButton = document.getElementById('openAddModalButton');
+    let addForm = document.getElementById('addProductForm');
+
+    // Modal 2 elements(View Product)
+    let detailModal = document.getElementById('detailModalOverlay');
+    let readMode = document.getElementById('modalReadMode');
+    let editMode = document.getElementById('modalEditMode');
+
+    // Under readMode
+    let editButton = document.getElementById('editProductButton');
+    let deleteButton = document.getElementById('deleteProductButton');
+    let editForm = document.getElementById('editProductForm')
+
+    // Under editMode
+    let cancelEditButton = document.getElementById('cancelEditButton');
+
+    // Global Tracker for tracking currently open cards 
+    let activeProductID = null;
+
+
+    // Opening Add Product Modal
+    if (openAddButton) {
+        openAddButton.addEventListener('click', () => {
+            addModal.classList.add('active');
+            document.body.classList.add('no-scroll');
+        });
+    }
+
+    // Closing Add Product Modal
+    document.querySelectorAll('.close-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            addModal.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+            if (addForm) {
+                addForm.reset();
+            }
+        });
+    })
+
+
+    // Product card data population
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+
+            activeProductID = card.dataset.id;     // here we pass the id of the card we clicked onto the null variable
+
+            // Populating Detail Modal(Read only)
+            document.getElementById('detailName').innerText = card.dataset.name;
+            document.getElementById('detailCategory').innerText = card.dataset.category;
+            document.getElementById('detailPrice').innerText = card.dataset.price;
+            document.getElementById('detailStock').innerText = card.dataset.stock;
+            document.getElementById('detailDescription').innerText = card.dataset.description;
+
+            // Displaying image
+            let imageUrl = card.dataset.image;
+            let imageContainer = document.getElementById('detailImageContainer');
+            if (imageContainer) {
+                imageContainer.innerHTML = imageUrl
+                    ? `<img src="${imageUrl}" style="max-width: 100%; max-height: 150px; margin-bottom: 10px; border-radius: 6px;">`
+                    : '';
+            }
+
+            // Populating the hidden edit form
+            if (editForm) {
+                editForm.querySelector('[name="name"]').value = card.dataset.name || "";
+                editForm.querySelector('[name="price"]').value = card.dataset.price || "";
+                editForm.querySelector('[name="stock"]').value = card.dataset.stock || "";
+                editForm.querySelector('[name="description"]').value = card.dataset.description || "";
+
+                let categoryField = editForm.querySelector('[name="category"]');
+                if (categoryField) {
+                    categoryField.value = card.dataset.category || "";
+                }
+            }
+
+            if (editButton) {
+                readMode.style.display = 'none';
+                editMode.style.display = 'block';
+            } else {
+                readMode.style.display = 'block';
+                editMode.style.display = 'none';
+            }
+
+            // Reveal the main Container overlay
+            detailModal.classList.add('active');
+            document.body.classList.add('no-scroll');
+        });
+    });
+
+    // Closing Detail panel when clicking the close button
+    document.querySelectorAll('.close-detail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            detailModal.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+        })
+    })
+
+    // Inline Modal state toggle
+    if (editButton) {
+        editButton.addEventListener('click', () => {
+            readMode.style.display = 'none';
+            editMode.style.display = 'block';
+        });
+    }
+
+    if (cancelEditButton) {
+        cancelEditButton.addEventListener('click', () => {
+            readMode.style.display = 'block';
+            editMode.style.display = 'none';
+        });
+    }
+
+
+    // Add Product using AJAX
+    if (addForm) {
+        addForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            fetch(addForm.action, {
+                method: 'POST',
+                body: new FormData(addForm),    // here it handles text fields and files together automatically
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => {
+                    if (!res.ok) return res.json().then(err => { throw err; });
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Add Product Error:', error);
+                    alert('Validation Errors: ' + JSON.stringify(error.errors || error.message));
+                })
+        })
+    }
+
+    // Edit form using AJAX
+    if (editForm) {
+        editForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            fetch(`/shop/inventory/edit/ajax/${activeProductID}/`, {
+                method: 'POST',
+                body: new FormData(editForm),   // here it passes the data input and image
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(res => {
+                    if (!res.ok) return res.json().then(err => { throw err; });
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Edit Product Error:', error);
+                    alert('Form Error: ' + JSON.stringify(error.errors || error.message));
+
+                });
+        });
+    }
+
+    // Deletion using AJAX
+    if (deleteButton) {
+        deleteButton.addEventListener('click', () => {
+            if (confirm("Are you sure you want to completely delete this product?")) {
+
+                let csrfToken = editForm.querySelector('[name="csrfmiddlewaretoken"]').value;
+
+                fetch(`/shop/inventory/delete/ajax/${activeProductID}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken     // Authenticate deteltion access privilage securely                            
+                    }
+                })
+                    .then(res => {
+                        if (!res.ok) return res.json().then(err => { throw err; });
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            detailModal.classList.remove('active')   // here it closes the modal instantly
+
+                            // Dynamic DOM UI Manipulation: Remove card from screen immediatly
+                            let deletedCard = document.querySelector(`.product-card[data-id="${activeProductID}"]`);
+                            if (deletedCard) {
+                                deletedCard.remove();
+                            } else {
+                                location.reload();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Delete Product Error:', error);
+                        alert('Action Failed: ' + (error.message || 'Server error occurred during deletion.'));
+                    });
+            }
+        });
+    }
+
+    // Closing modals when clicking the blurred part
+    window.addEventListener('click', (e) => {
+        if (e.target === addModal) {
+            addModal.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+            if (addModal) addModal.reset();
+        }
+        if (e.target === detailModal) {
+            detailModal.classList.remove('active');
+            document.body.classList.remove('no-scroll');
+            if (editForm) editForm.reset();
+        }
+    });
+    </script>
+{% endblock %}

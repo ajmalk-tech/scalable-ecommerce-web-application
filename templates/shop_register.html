@@ -1,0 +1,55 @@
+{% extends "base_shop.html" %}
+{% block title %}Register{% endblock %}
+{% block style %}{% endblock %}
+{% block content %}
+    <div class="registration-container">
+        <h1>Register</h1>
+        {% if messages %}
+            <div class="message-container">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <form action="" method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="error-banner">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <!-- Shop Name -->
+            <div class="form-group">
+                <label for="{{ form.shop_name.id_for_label }}">{{ form.shop_name.label }}</label>
+                {{ form.shop_name }}
+                {% if form.shop_name.errors %}
+                    <div class="field-error">{{ form.shop_name.errors }}</div>
+                {% endif %}
+            </div>
+            <!-- Email ID -->
+            <div class="form-group">
+                <label for="{{ form.email_id.id_for_label }}">{{ form.email_id.label }}</label>
+                {{ form.email_id }}
+                {% if form.email_id.errors %}
+                    <div class="field-error">{{ form.email_id.errors }}</div>
+                {% endif %}
+            </div>
+            <!-- Password -->
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <div class="field-error">{{ form.password.errors }}</div>
+                {% endif %}
+            </div>
+            <!-- Confirm Password -->
+            <div class="form-group">
+                <label for="{{ form.confirm_password.id_for_label }}">{{ form.confirm_password.label }}</label>
+                {{ form.confirm_password }}
+                {% if form.confirm_password.errors %}
+                    <div class="field-error">{{ form.confirm_password.errors }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-2">Register</button>
+        </form>
+    </div>
+{% endblock %}
+{% block script %}{% endblock %}

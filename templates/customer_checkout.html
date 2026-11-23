@@ -1,0 +1,192 @@
+{% extends "base_customer.html" %}
+{% block title %}Checkout{% endblock %}
+{% block style %}
+    <style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="container mt-5 mb-5">
+        <h2 class="mb-4 fw-bold">Secure Checkout</h2>
+        <div class="row">
+            <div class="col-md-7 mb-4">
+                <div class="card shadow-sm p-4 bg-white border-0 rounded">
+                    <h4 class="fw-bold mb-3 text-dark border-bottom pb-2">Shipping Information</h4>
+                    <form action="" id="checkoutForm">
+                        {% csrf_token %}
+                        <!-- Customer Name -->
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label fw-semibold text-secondary small">Full Name</label>
+                            <input type="text"
+                                   name="full_name"
+                                   id="fullName"
+                                   class="form-control py-2 shadow-none border-secondary-subtle"
+                                   value="{{ request.user.get_full_name }}"
+                                   required>
+                        </div>
+                        <!-- Delivery Address -->
+                        <div class="mb-4">
+                            <label for="delivery_address"
+                                   class="form-label fw-semibold text-secondary small">Delivery Address</label>
+                            <textarea name="delivery_address"
+                                      id="deliveryAddress"
+                                      class="form-control shadow-none border-secondary-subtle"
+                                      rows="4"
+                                      required>{{ default_address }}</textarea>
+                        </div>
+                        <!-- Payment selection radio -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-secondary d-block small">Select Payment Option</label>
+                            <div class="form-check p-3 border rounded-3 bg-light d-flex align-items-center cursor-pointer">
+                                <input type="radio"
+                                       value="COD"
+                                       name="payment_option"
+                                       id="payCOD"
+                                       class="form-check-input ms-1 shadow-none"
+                                       checked>
+                                <label class="form-check-label fw-bold ms-3 text-dark mb-0 w-100 cursor-pointer">Cash on Delivery (COD)</label>
+                            </div>
+                            <div class="form-check p-3 border rounded-3 bg-light d-flex align-items-center cursor-pointer">
+                                <input type="radio"
+                                       value="Razorpay"
+                                       name="payment_option"
+                                       id="payOnline"
+                                       class="form-check-input ms-1 shadow-none">
+                                <label class="form-check-label fw-bold ms-3 bg-light text-dark mb-0 w-100 cursor-pointer">Pay Securely Online (Card / UPI / NetBanking)</label>
+                            </div>
+                        </div>
+                        <button type="submit"
+                                id="submitOrderBtn"
+                                class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm rounded-3 mt-2">Confirm & Place Order</button>
+                    </form>
+                </div>
+            </div>
+            <!-- Checkout summary -->
+            <div class="col-md-5">
+                <div class="card shadow-sm p-4 bg-light border-0 rounded-3 position-sticky"
+                     style="top: 20px">
+                    <h4 class="fw-bold mb-3 text-dark border-bottom pb-2">Review your Order</h4>
+                    <div class="mb-4" style="max-height: 280px; overflow-y: auto;">
+                        {% for item in cart_items %}
+                            <div class="d-flex justify-content-between align-items-center mb-2 bg-white p-3 rounded-3 border-sm shadow-sm">
+                                <span class="text-dark text-truncate fw-semibold" style="max-width: 70%;">
+                                    <span class="text-primary fw-bold me-1">{{ item.quantity }}x</span> {{ item.product.name }}
+                                </span>
+                                <span class="fw-bold text-dark-emphasis">{{ item.product.price }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Price -->
+                    <div class="d-flex justify-content-between mb-2 small px-1">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="fw-bold text-dark">₹{{ subtotal }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 border-bottom pb-3 small px-1">
+                        <span class="text-muted">Delivery Charges</span>
+                        <span class="fw-bold text-success">{% if shipping == 0 %} Free {% else %} ₹{{ shipping }} {% endif %}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center px-1">
+                        <h5 class="mb-0 fw-bold text-secondary-emphasis">Total</h5>
+                        <h3 class="mb-0 text-primary fw-bold">{{ total }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+    document.getElementById('checkoutForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        let fullName = document.getElementById('fullName').value;
+        let deliveryAddress = document.getElementById('deliveryAddress').value;
+
+        let csrfToken = document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+        
+        let selectedMethod = document.querySelector('input[name="payment_option"]:checked').value;
+        
+        let payloadData = {
+            full_name: fullName,
+            delivery_address: deliveryAddress,
+            payment_method: selectedMethod
+        };
+
+        if (selectedMethod === 'COD') {
+            fireAjaxCheckoutPipeline(payloadData, csrfToken);
+        } else {
+            let options = {
+                "key": "{{ razorpay_key_id }}",
+                "amount": parseFloat("{{ total }}") * 100,   // 1 rupees == 100 razorpay tokens
+                "currency": "INR",
+                "name": "Silicon Bay",
+                "description": "Secure Checkout Verification Link",
+                "order_id": "{{ razorpay_order_id }}",
+
+                "handler": function (response) {
+                    payloadData.razorpay_order_id = response.razorpay_order_id;
+                    payloadData.razorpay_payment_id = response.razorpay_payment_id;
+                    payloadData.razorpay_signature = response.razorpay_signature;
+
+                    fireAjaxCheckoutPipeline(payloadData, csrfToken);
+                },
+                "prefill": {
+                    "name": fullName,
+                    "email": "{{ request.user.email }}"
+                },
+                "theme": {
+                    "color": "#198754"
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        actionBtn.disabled = false;
+                        actionBtn.innerText = "Confirm & Place Order"
+                    }
+                }
+            };
+            let rzp = new Razorpay(options);
+            rzp.open();
+        }
+    });
+
+    
+    function fireAjaxCheckoutPipeline(dataBundle, tokenKey) {
+        let actionBtn = document.getElementById('submitOrderBtn');
+        actionBtn.disabled = true;
+        actionBtn.innerText = "Processing Transaction Pipeline..."
+        fetch("{% url 'customer:ajaxcheckout' %}", {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': tokenKey
+            },
+            body: JSON.stringify(dataBundle)
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(err => { throw new Error(err.message || 'Server processing error encountered') });
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.href = "/checkout/success/" + data.order_id + "/"; 
+            } else {
+                alert("Checkout Processing Exception:" + data.message);
+                actionBtn.disabled = false;
+                actionBtn.innerText = "Confirm & Place Order";
+            }
+        })
+        .catch(err => {
+            console.error('Checkout API Loop Failure:', err);
+            alert("Network connection error. Please check your internet and try again.");
+            actionBtn.disabled = false;
+            actionBtn.innerText = "Confirm & Place Order";
+        });
+    }
+    </script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base_customer.html" %}
+{% block title %}Order Success{% endblock %}
+{% block style %}{% endblock %}
+{% block content %}
+    <div class="container mt-5 mb-5 text-center py-5">
+        <div class="card shadow-sm p-5 mx-auto bg-white border-top border-success border-4"
+             style="max-width: 600px;
+                    border-radius: 12px">
+            <div class="text-success display-1 mb-3">🎉</div>
+            <h2 class="fw-bold text-dark mb-2">Thank you for your Order</h2>
+            <p class="text-muted mb-4">Your Order has been placed successfully and is currently being processed.</p>
+            <div class="bg-light p-4 rounded-3 mb-4 text-start border border-secondary-subtle">
+                <h6 class="fw-bold border-bottom pb-2 mb-3 text-secondary text-uppercase small font-monospace">Order Confirmation Summary</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Order Reference ID:</span>
+                    <strong class="text-dark fs-5">{{ order.formatted_order_id }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Shipped To:</span>
+                    <span class="fw-semibold text-dark">{{ order.full_name }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-top pt-2 mt-2">
+                    <span class="text-muted">Payment Method:</span>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis fw-bold px-3 py-2">{{ order.payment_method }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-top pt-2 mt-2">
+                    <span class="fw-bold text-dark">Amount Paid in Total:</span>
+                    <strong class="text-primary-emphasis fs-5">₹{{ order.total_amount }}</strong>
+                </div>
+            </div>
+            <div class="d-flex flex-column gap-2">
+                <a href="{% url 'customer:receipt' order.id %}"
+                   class="btn btn-outline-danger py-3 fw-bold shadow-sm rounded-3">Download Receipt</a>
+                <a href="{% url 'customer:products' %}"
+                   class="btn btn-primary py-3 fw-semibold rounded-3 mt-1 shadow-sm">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}{% endblock %}

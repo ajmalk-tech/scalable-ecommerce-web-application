@@ -1,0 +1,417 @@
+{% extends "base_customer.html" %}
+{% block title %}Products{% endblock %}
+{% block style %}
+    <style>
+    .product-title-clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-clamp: 2;
+        overflow: hidden;
+        height: 3rem;
+        line-height: 1.5rem;
+    }
+
+    /* Product Detail Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+        overflow: auto;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .modal-box {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 2);
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-box h2 {
+        margin-top: 0;
+        padding-top: 0;
+    }
+
+    .modal-box::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .modal-box::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.03);
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .modal-box::-webkit-scrollbar-thumb {
+        background-color: #bbb;
+        background-clip: padding-box;
+        border-radius: 10px;
+        border: 3px solid transparent
+    }
+
+    .modal-box::-webkit-scrollbar-thumb:hover {
+        background-color: #888;
+    }
+
+    .no-scroll {
+        overflow: hidden;
+        height: 100vh;
+    }
+
+    .product-card {
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .product-card .card {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        border: 1px solid #eaeaea;
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .product-card:hover {
+        transform: translateY(-6px);
+    }
+
+    .product-card:hover .card {
+        border-color: #d1d1d1;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .product-card button {
+        margin-left: auto;
+    }
+
+    .action-btn {
+        cursor: pointer;
+        border: none;
+    }
+
+    /* Cart Drawer Modal*/
+    .drawer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 1050;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .drawer-box {
+        position: fixed;
+        top: 0;
+        right: -400px;
+        width: 100%;
+        max-width: 400px;
+        height: 100%;
+        background: #fff;
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+        z-index: 1060;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .drawer-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .drawer-overlay.active .drawer-box {
+        right: 0;
+    }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="container mt-4">
+        <div class="row">
+            {% for product in products %}
+                <div class="product-card col-md-4 mb-4 d-flex align-items-stretch"
+                     data-id="{{ product.id }}"
+                     data-name="{{ product.name }}"
+                     data-price="{{ product.price }}"
+                     data-category="{{ product.category }}"
+                     data-description="{{ product.description }}"
+                     data-image="{% if product.image %}{{ product.image.url }}{% endif %}">
+                    <div class="card customer-product-card h-100 shadow-sm d-flex flex-column">
+                        <div class="customer-product-image text-center">
+                            {% if product.image %}
+                                <img src="{{ product.image.url }}"
+                                     alt="{{ product.name }}"
+                                     class="card-img-top">
+                            {% else %}
+                                <div class="bg-light text-center py-5 text-muted no-product-image">No Image Available</div>
+                            {% endif %}
+                        </div>
+                        <div class="card-body d-flex flex-column flex-grow-1">
+                            <h5 class="card-title text-dark mb-2 product-title-clamp">{{ product.name }}</h5>
+                            {% if product.category %}
+                                <span class="badge bg-secondary mb-2">{{ product.category }}</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark mb-2">Uncategorised</span>
+                            {% endif %}
+                            <p class="text-muted small mb-2">Sold by: <strong>{{ product.shop.first_name }}</strong></p>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <span class="text-secondary-emphasis fw-bold">₹{{ product.price }}</span>
+                            <div class="d-flex gap-2">
+                                <button class="action-btn detail-btn btn btn-sm btn-outline-secondary">Details</button>
+                                <button class="action-btn add-to-cart-btn btn btn-sm btn-success">Add to Cart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center py-5">
+                    <h3>No Products available right now</h3>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div id="detailModalOverlay" class="modal-overlay">
+        <div class="modal-box customer-dialog" id="detailMode">
+            <h2 id="detailName">Product Details</h2>
+            <div id="detailImageContainer"></div>
+            <span id="detailCategory" class="badge bg-secondary mb-2"></span>
+            <p><strong>Price:</strong> ₹<span id="detailPrice"></span></p>
+            <p id="detailDescription" style="color: #666;"></p>
+            <hr>
+            <div class="modal-action-btns">
+                <button id="addToCartButton"
+                        class="action-btn modal-to-cart-btn btn btn-sm btn-success"
+                        disabled>
+                    Add to
+                    Cart
+                </button>
+                <button class="action-btn close-detail-btn btn btn-sm btn-outline-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
+    <div id="cartDrawerOverlay" class="drawer-overlay">
+        <div id="cartDrawer" class="drawer-box">
+            <div class="drawer-header d-flex justify-content-between align-items-center mb-3">
+                <h4 class="m-0">Product Added</h4>
+                <button id="closeDrawerBtn" class="btn-close" aria-label="Close"></button>
+            </div>
+            <div class="drawer-body flex-grow-1">
+                <div class="d-flex align-items-center gap-3 p-2 border rounded mb-4">
+                    <div id="drawerProductImage" style="width: 250px; "></div>
+                    <div>
+                        <h6 id="drawerProductName" class="mb-1 text-dark"></h6>
+                        <p class="mb-2 text-secondary-emphasis fw-bold">₹<span id="drawerProductPrice"></span></p>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="descQty">-</button>
+                            <span id="drawerProductQty" class="fw-bold">...</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="incrQty">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer d-flex flex-column gap-2 mt-auto pt-3 border-top">
+                <a href="{% url 'customer:cart' %}" class="btn btn-success w-100">Go to Cart</a>
+                <button id="continueShoppingBtn" class="btn btn-outline-primary">Continue Shopping</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}
+    <script>
+    // Detail Modal
+    let detailModal = document.getElementById('detailModalOverlay');
+    let detailMode = document.getElementById('detailMode');
+
+    let activeProductID = null;
+
+    document.querySelectorAll('.product-card').forEach(card => {
+        let detailButton = card.querySelector('.detail-btn')
+        let addToCartButton = card.querySelector('.add-to-cart-button')
+
+        if (detailButton) {
+            detailButton.addEventListener('click', (e) => {
+                activeProductID = card.dataset.id
+
+                document.getElementById('detailName').innerText = card.dataset.name;
+                document.getElementById('detailCategory').innerText = card.dataset.category;
+                document.getElementById('detailPrice').innerText = card.dataset.price;
+                document.getElementById('detailDescription').innerText = card.dataset.description;
+
+                let imageUrl = card.dataset.image;
+                let imageContainer = document.getElementById('detailImageContainer');
+                if (imageContainer) {
+                    imageContainer.innerHTML = imageUrl
+                        ? `<img src="${imageUrl}" style="max-width: 100%; max-height: 150px; margin-bottom: 10px; border-radius: 6px;">`
+                        : '';
+                }
+
+                detailModal.classList.add('active');
+                document.body.classList.add('no-scroll');
+
+            });
+        }
+
+        if (addToCartButton) {
+            addToCartButton.addEventListener('click', (e) => {
+                console.log("create the add to cart logic")
+                // this one is just for safe guard
+            });
+        }
+    });
+
+    document.querySelectorAll('.close-detail-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            detailModal.classList.remove('active');
+            document.body.classList.remove('no-scroll')
+        })
+    })
+
+
+    // Cart Drawer
+    let cartDrawerOverlay = document.getElementById('cartDrawerOverlay');
+    let closeDrawerBtn = document.getElementById('closeDrawerBtn');
+    let continueShoppingBtn = document.getElementById('continueShoppingBtn');
+    let incrBtn = document.getElementById('incrQty');
+    let descBtn = document.getElementById('descQty');
+
+    let currentQty = 1;
+    let currentSelectedId = null;
+
+
+
+    document.querySelectorAll('[data-id]').forEach(card => {
+        let addToCartBtn = card.querySelector('.add-to-cart-btn');
+
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                currentSelectedId = card.dataset.id;
+                let name = card.dataset.name;
+                let price = card.dataset.price;
+                let imgUrl = card.dataset.image;
+
+                currentQty = 1;
+
+                document.getElementById('drawerProductName').innerText = name;
+                document.getElementById('drawerProductPrice').innerText = price;
+                // document.getElementById('drawerProductQty').innerText = currentQty;
+
+                let imgContainer = document.getElementById('drawerProductImage');
+                if (imgUrl) {
+                    imgContainer.innerHTML = `<img src="${imgUrl}" style="width: 100%; height: 100%; object-fit:cover; border-radius:4px;">`;
+                } else {
+                    imgContainer.innerHTML = `<div class="bg-light d-flex align-items-center justify-content-center text-muted small border rounded" style="width: 100%; height: 100%;">No Img</div>`;
+                }
+
+                cartDrawerOverlay.classList.add('active');
+
+                sendCartUpdateToBackend(currentSelectedId, 1, 'add');
+            });
+        }
+    });
+
+    document.getElementById('incrQty').addEventListener('click', () => {
+        if (!currentSelectedId) return;
+
+        if (currentQty < 20) {
+            currentQty++;
+            document.getElementById('drawerProductQty').innerText = currentQty;
+            sendCartUpdateToBackend(currentSelectedId, currentQty, 'set');
+            toggleQuantityButtonStates();
+        }
+    });
+
+    document.getElementById('descQty').addEventListener('click', () => {
+        if (!currentSelectedId) return;
+
+        if (currentQty > 1) {
+            currentQty--;
+            document.getElementById('drawerProductQty').innerText = currentQty;
+            sendCartUpdateToBackend(currentSelectedId, currentQty, 'set');
+            toggleQuantityButtonStates();
+        }
+    });
+
+    function toggleQuantityButtonStates() {
+        incrBtn.disabled = (currentQty >= 20);
+        descBtn.disabled = (currentQty <= 1);
+    }
+
+    // AJAX Django sync
+    function sendCartUpdateToBackend(productId, quantity, action) {
+        let csrfToken = document.getElementById('csrfToken').value;
+
+        fetch('/cart/add/ajax/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: quantity,
+                action: action
+            })
+        })
+            .then(response => {
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Server encountered an issue');
+                    }
+                    return data;
+                });
+            })
+            .then(data => {
+                console.log('Cart successfully updated in database:', data);
+
+                currentQty = data.final_quantity;
+                document.getElementById('drawerProductQty').innerText = currentQty
+
+                toggleQuantityButtonStates();
+
+            })
+            .catch(error => {
+                console.error('Error during AJAX submission:', error.message);
+                alert('Failed to update cart:' + error.message);
+            });
+    }
+
+    closeDrawerBtn.addEventListener('click', closeCartDrawer);
+    continueShoppingBtn.addEventListener('click', closeCartDrawer);
+    cartDrawerOverlay.addEventListener('click', (e) => {
+        if (e.target === cartDrawerOverlay) closeCartDrawer();
+    });
+
+    function closeCartDrawer() {
+        cartDrawerOverlay.classList.remove('active');
+    }
+    </script>
+{% endblock %}

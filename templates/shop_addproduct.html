@@ -1,0 +1,9 @@
+<h2>Add new product</h2>
+<form id="addProductForm"
+      method="post"
+      action="{% url 'shop:addproduct' %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Save Product</button>
+    <button type="button" class="action-btn close-add-btn">Cancel</button>
+</form>

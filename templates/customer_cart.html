@@ -1,0 +1,240 @@
+{% extends "base_customer.html" %}
+{% block title %}Cart{% endblock %}
+{% block style %}{% endblock %}
+{% block content %}
+    <input type="hidden" id="cartCsrfToken" value="{{ csrf_token }}">
+    <div class="container mt-5 mb-5">
+        <h2 class="mb-4 fw-bold">Shopping Cart</h2>
+        <div class="row">
+            <div class="col-md-8">
+                {% for item in cart_items %}
+                    <div class="cart-item-row card shadow-sm mb-3 p-3"
+                         data-product-id="{{ item.product.id }}"
+                         data-product-price="{{ item.product.price }}">
+                        <div class="row align-items-center">
+                            <!-- image -->
+                            <div class="col-3 col-md-2 text-center">
+                                {% if item.product.image %}
+                                    <img src="{{ item.product.image.url }}"
+                                         alt="{{ item.product.name }}"
+                                         class="img-fluid rounded"
+                                         style="object-fit: cover;
+                                                max-height: 80px">
+                                {% else %}
+                                    <div class="bg-light text-center py-3 text-muted rounded small">No Image</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-9 col-md-4">
+                                <h5 class="mb-1 text-dark fw-bold text-truncate">{{ item.product.name }}</h5>
+                                <p class="mb-0 text-muted small">Price: ₹{{ item.product.price }}</p>
+                            </div>
+                            <div class="col-6 col-md-3 mt-3 mt-md-0 text-center">
+                                <span class="text-muted small d-block d-md-none mb-1">Quantity:</span>
+                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <button class="cart-desc-btn btn btn-sm btn-outline-secondary py-0 px-2 fw-bold"
+                                            {% if item.quantity <= 1 %} disabled {% endif %}>-</button>
+                                    <span class="cart-product-quantity fw-bold mx-1">{{ item.quantity }}</span>
+                                    <button class="cart-incr-btn btn btn-sm btn-outline-secondary py-0 px-2 fw-bold"
+                                            {% if item.quantity >= 20 %} disabled {% endif %}>+</button>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3 mt-3 mt-md-0 text-end">
+                                <h5 class="text-success-emphasis fw-bold mb-0">₹<span class="item-line-total">{{ item.total_price }}</span></h5>
+                                <button class="cart-delete-btn btn btn-sm btn-outline-danger mt-2 px-3 py-1 fw-semibold shadow-sm">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-5 border rounded bg-white shadow-sm">
+                        <h3 class="text-muted mb-3">Your Cart is empty</h3>
+                        <p class="text-secondary mb-4">Go explore the product catelog</p>
+                        <a href="{% url 'customer:products' %}"
+                           class="btn btn-primary px-4 py-2">Continue Shopping</a>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4 bg-white position-sticky" style="top: 20px;">
+                    <h4 class="fw-bold mb-4 border-bottom pb-2">Order Summary</h4>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="fw-bold text-dark">₹<span id="summarySubtotal">{{ subtotal }}</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                        <span class="text-muted">Delivery Charges</span>
+                        <span class="fw-bold text-success" id="summaryShipping">
+                            {% if shipping == 0 %} Free {% else %} ₹{{ shipping }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0 fw-bold">Total Amount</h5>
+                        <h4 class="mb-0 text-primary fw-bold">₹<span id="summaryTotal">{{ total }}</span></h4>
+                    </div>
+                    {% if cart_items %}
+                        <a href="{% url 'customer:checkout' %}"
+                           class="btn btn-success w-100 py-3 fw-bold fs-5 shadow-sm">Proceed to Checkout</a>
+                    {% else %}
+                        <button class="btn btn-secondary w-100 py-3 fw-bold fs-5" disabled>Proceed to Checkout</button>
+                    {% endif %}
+                    <a href="{% url 'customer:products' %}"
+                       class="btn btn-outline-secondary w-100 mt-2 py-2 small fw-semibold">Back to Catalog</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}
+    <script>
+        // (+) Click tracker
+        document.querySelectorAll('.cart-incr-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                let row = btn.closest('.cart-item-row');
+                let productId = row.dataset.productId;
+                /** @type {HTMLElement} */    // this is n industry-standard format called JSDoc. It acts like a direct instruction manual for VS Code's autocomplete engine.
+                let qtyDisplay = row.querySelector('.cart-product-quantity');
+                
+                let qty = parseInt(qtyDisplay.innerText);
+                if (qty < 20) {
+                    qty++;
+                    qtyDisplay.innerText = qty;
+                    syncCartToBackend(productId, qty, row);
+                }
+            });
+        });
+
+        // (-) Click Tracker
+        document.querySelectorAll('.cart-desc-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                let row = btn.closest('.cart-item-row');
+                let productId = row.dataset.productId;
+                /** @type {HTMLElement} */
+                let qtyDisplay = row.querySelector('.cart-product-quantity');
+
+                let qty = parseInt(qtyDisplay.innerText);
+                if (qty > 1) {
+                    qty--;
+                    qtyDisplay.innerText = qty;
+                    syncCartToBackend(productId, qty, row);
+                }
+            });
+        });
+
+        // Ajax sync
+        function syncCartToBackend(productId, newQty, row) {
+            let csrfToken = document.getElementById('cartCsrfToken').value;
+            let incrBtn = row.querySelector('.cart-incr-btn');
+            let descBtn = row.querySelector('.cart-desc-btn');
+            let lineTotalDisplay = row.querySelector('.item-line-total');
+            let productPrice = parseFloat(row.dataset.productPrice);
+
+            fetch("{% url 'customer:ajaxaddtocart' %}", {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: newQty,
+                    action: 'set'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    let finalQty = data.final_quantity;
+                    row.querySelector('.cart-product-quantity').innerText = finalQty
+
+                    incrBtn.disabled = (finalQty >= 20);
+                    descBtn.disabled = (finalQty <= 1);
+
+                    lineTotalDisplay.innerText = (productPrice * finalQty).toFixed(0);
+
+                    reCalculateOrderSummary();
+                } else {
+                    alert('Database update exception: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('AJAX network failure: ', error)
+            });
+        }
+
+        function reCalculateOrderSummary() {
+            let liveSubtotal = 0;
+
+            document.querySelectorAll('.cart-item-row').forEach(row => {
+                let currentLineTotal = parseFloat(row.querySelector('.item-line-total').innerText);
+                liveSubtotal += currentLineTotal;
+            });
+
+            let shippingCost = 50;
+            if (liveSubtotal > 500 || liveSubtotal === 0) {
+                shippingCost = 0;
+            }
+
+            document.getElementById('summarySubtotal').innerText = liveSubtotal.toFixed(0);
+
+            let shippingDisplay = document.getElementById('summaryShipping');
+            if (shippingCost === 0) {
+                shippingDisplay.innerText = "Free";
+                shippingDisplay.className = "fw-bold text-success";
+            } else {
+                shippingDisplay.innerText = "₹" + shippingCost;
+                shippingDisplay.className = "fw-bold text-dark";
+            }
+
+            document.getElementById('summaryTotal').innerText = (liveSubtotal + shippingCost).toFixed(0);
+        }
+
+
+        // Remove button
+        document.querySelectorAll('.cart-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                let row = btn.closest('.cart-item-row');
+                let productId = row.dataset.productId;
+
+                if (confirm("Are you sure you want to remove this product?")) {
+                    let csrfToken = document.getElementById('cartCsrfToken').value;
+
+                    fetch("{% url 'customer:ajaxdeletefromcart' %}", {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            product_id: productId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            row.style.transition = 'all 0.3s ease';
+                            row.style.opacity = '0';
+                            row.style.transform = 'scale(0.9)';
+
+                            setTimeout(() => {
+                                row.remove();
+                                reCalculateOrderSummary();
+
+                                if (document.querySelectorAll('.cart-item-row').length === 0) {
+                                    window.location.reload();
+                                }
+                            }, 300);
+                        } else {
+                            alert('Removal Failed: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('AJAX Delete Exception:', error);
+                    });
+                }
+            });
+        });
+        
+        
+    </script>
+{% endblock %}

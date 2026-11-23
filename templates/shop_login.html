@@ -1,0 +1,65 @@
+{% extends "base_shop.html" %}
+{% block title %}Login{% endblock %}
+{% block head %}
+    <meta http-equiv="Cache-Control"
+          content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+{% endblock %}
+{% block style %}{% endblock %}
+{% block content %}
+    <div class="login-container">
+        <h1>Login</h1>
+        {% if messages %}
+            <div class="message-container">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <form action="" method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="error-banner">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="form-group">
+                <label for="{{ form.shop_id.id_for_label }}">{{ form.shop_id.label }}</label>
+                {{ form.shop_id }}
+                {% if form.shop_id.errors %}
+                    <div class="field-error">{{ form.shop_id.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <div class="field-error">{{ form.password.errors }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mt-2">Login</button>
+        </form>
+    </div>
+{% endblock %}
+{% block script %}
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let messageContainer = document.querySelector('.message-container');
+
+        if (messageContainer) {
+            // here it hides the message automatically after 5 sec
+            setTimeout(function () {
+                messageContainer.style.display = 'none'
+            }, 5000);
+        }
+    });
+    // Listens for the page show event (handles regular loads and bfcache loads)
+    // only need for browsers who use bf cache
+    window.addEventListener('pageshow', function (event) {
+        // here event.persisted(browsers histroy memory) is true by default, which means browser pull thsi page from RAM history 
+        if (event.persisted) {
+            window.location.reload()
+        }
+    })
+
+    </script>
+{% endblock %}

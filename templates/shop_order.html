@@ -1,0 +1,97 @@
+{% extends "base_shop.html" %}
+{% block title %}{{ request.user.username }} - Orders{% endblock %}
+{% block style %}{% endblock %}
+{% block content %}
+    <div class="container-fluid mt-4 mb-5 px-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-dark">Orders</h2>
+            <div class="d-flex gap-2">
+                <span class="badge bg-warning text-dark px-3 py-2 fw-bold">Pending Items: {{ pending_count }}</span>
+                <span class="badge bg-primary px-3 py-2 fw-bold">Processing Items: {{ processing_count }}</span>
+            </div>
+        </div>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm mb-4"
+                     role="alert">
+                    {{ message }}
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="table-responsive p-2 pt-1">
+                <table class="table table-hover align-middle mb-0 bg-white">
+                    <thead class="table-dark text-uppercase small">
+                        <tr>
+                            <th class="ps-4 py-3" style="width: 12%;">Receipt</th>
+                            <th class="py-3" style="width: 12%;">Order Date</th>
+                            <th class="py-3" style="width: 22%;">Customer Delivery Address</th>
+                            <th class="py-3" style="width: 20%;">Product Name</th>
+                            <th class="py-3 text-center" style="width: 8%;">Quantity</th>
+                            <th class="py-3 text-end" style="width: 10%;">Amount</th>
+                            <th class="py-3 text-center" style="width: 16%;">Order Status</th>
+                            <th class="pe-4 py-3 text-end" style="width: 15%;">My Item Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small table-group-divider">
+                        {% if not order_items %}
+                            <tr>
+                                <td colspan="8" class="text-center py-5 text-muted fs-5">No Orders</td>
+                            </tr>
+                        {% else %}
+                            {% for item in order_items %}
+                                <tr style="border-bottom: 2px solid #dee2e6 !important;">
+                                    <td class="fw-bold text-primary ps-4">{{ item.order.formatted_order_id }}</td>
+                                    <td class="text-muted">{{ item.order.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ item.order.full_name }}</div>
+                                        <div class="text-muted text-xs text-truncate"
+                                             style="max-width: 180px"
+                                             title="{{ item.order.delivery_address }}">
+                                            {{ item.order.delivery_address }}
+                                        </div>
+                                    </td>
+                                    <td class="fw-semibold text-dark">{{ item.product_name }}</td>
+                                    <td class="fw-bold text-secondary text-center py-3 fs-6">{{ item.quantity }}</td>
+                                    <td class="fw-bold text-success text-end py-3 pe-3 fs-6">₹{{ item.price }}</td>
+                                    <td class="text-center py-3">
+                                        <span class="badge bg-info-subtle text-info-emphasis fw-bold rounded-2 px-2 py-1 font-monospace fs-7">
+                                            {{ item.order.status }}
+                                        </span>
+                                    </td>
+                                    <td class="pe-4 py-3">
+                                        <form method="post"
+                                              action="{% url 'shop:update_status' item.id %}"
+                                              class="d-flex align-items-center gap-2">
+                                            {% csrf_token %}
+                                            <select name="order_status"
+                                                    class="form-select form-select-sm shadow-none border-secondary-subtle w-auto">
+                                                <option value="Pending"
+                                                        {% if item.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                                <option value="Processing"
+                                                        {% if item.status == 'Processing' %}selected{% endif %}>Processing</option>
+                                                <option value="Shipped"
+                                                        {% if item.status == 'Shipped' %}selected{% endif %}>Shipped</option>
+                                                <option value="Delivered"
+                                                        {% if item.status == 'Delivered' %}selected{% endif %}>Delivered</option>
+                                                <option value="Cancelled"
+                                                        {% if item.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                                            </select>
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-primary px-3 fw-semibold shadow-sm">Update</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}{% endblock %}
